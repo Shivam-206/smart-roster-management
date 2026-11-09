@@ -1,0 +1,246 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum CalendarType {
+  ALL_365_DAYS
+  ALL_EXCEPT_PUBLIC_HOLIDAYS
+  ALL_EXCEPT_SUNDAYS_AND_PUBLIC_HOLIDAYS
+  CUSTOM
+}
+
+enum AssignmentType {
+  PRIMARY
+  SECONDARY_BACKUP
+  FLOAT
+}
+
+enum LeaveType {
+  ANNUAL
+  SICK
+  CASUAL
+  COMP_OFF
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum RosterStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum RosterShiftStatus {
+  WORKING
+  WEEKLY_OFF
+  LEAVE
+  COMP_OFF
+  HOLIDAY
+}
+
+enum ShiftType {
+  REGULAR
+  BACKUP_COVERAGE
+  OVERTIME
+}
+
+enum ConflictSeverity {
+  HARD_ERROR
+  SOFT_WARNING
+}
+
+enum ConflictCategory {
+  UNDER_COVERAGE
+  DOUBLE_BOOKING
+  LEAVE_COLLISION
+  MAX_CONSECUTIVE_DAYS
+  UNQUALIFIED_ASSIGNMENT
+  CALENDAR_INCONSISTENCY
+  SINGLE_POINT_FAILURE
+  UNEVEN_WORKLOAD
+}
+
+model Pod {
+  id             String     @id @default(uuid())
+  code           String     @unique
+  name           String
+  description    String?
+  leadEmployeeId String?    @unique
+  lead           Employee?  @relation("PodLead", fields: [leadEmployeeId], references: [id])
+  members        Employee[] @relation("PodMembers")
+  brands         Brand[]
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+}
+
+model Employee {
+  id                 String                      @id @default(uuid())
+  employeeCode       String                      @unique
+  name               String
+  email              String                      @unique
+  role               String                      @default("OPERATIONS_ASSOCIATE")
+  isPodLead          Boolean                     @default(false)
+  podId              String?
+  pod                Pod?                        @relation("PodMembers", fields: [podId], references: [id])
+  leadingPod         Pod?                        @relation("PodLead")
+  contractType       String                      @default("FULL_TIME")
+  weeklyWorkDays     Int                         @default(5)
+  maxConsecutiveDays Int                         @default(6)
+  isActive           Boolean                     @default(true)
+  assignments        EmployeeProcessAssignment[]
+  leaves             EmployeeLeave[]
+  weeklyOffs         EmployeeWeeklyOff[]
+  rosterShifts       RosterShift[]
+  createdAt          DateTime                    @default(now())
+  updatedAt          DateTime                    @updatedAt
+}
+
+model Brand {
+  id               String    @id @default(uuid())
+  code             String    @unique
+  name             String
+  description      String?
+  podId            String
+  pod              Pod       @relation(fields: [podId], references: [id])
+  isSingleResource Boolean   @default(true)
+  processes        Process[]
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+model Process {
+  id              String                      @id @default(uuid())
+  code            String                      @unique
+  name            String
+  brandId         String
+  brand           Brand                       @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  calendarType    CalendarType                @default(ALL_365_DAYS)
+  defaultMinStaff Int                         @default(1)
+  description     String?
+  coverageRules   ProcessCoverageRule[]
+  assignments     EmployeeProcessAssignment[]
+  rosterShifts    RosterShift[]
+  createdAt       DateTime                    @default(now())
+  updatedAt       DateTime                    @updatedAt
+}
+
+model ProcessCoverageRule {
+  id                 String   @id @default(uuid())
+  processId          String
+  process            Process  @relation(fields: [processId], references: [id], onDelete: Cascade)
+  dateOverride       String?
+  dayOfWeek          Int?
+  requiredStaffCount Int
+  note               String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model EmployeeProcessAssignment {
+  id             String         @id @default(uuid())
+  employeeId     String
+  employee       Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  processId      String
+  process        Process        @relation(fields: [processId], references: [id], onDelete: Cascade)
+  assignmentType AssignmentType @default(PRIMARY)
+  priorityRank   Int            @default(1)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@unique([employeeId, processId])
+}
+
+model PublicHoliday {
+  id             String   @id @default(uuid())
+  date           String   @unique
+  name           String
+  isMandatoryOff Boolean  @default(true)
+  description    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model EmployeeLeave {
+  id         String      @id @default(uuid())
+  employeeId String
+  employee   Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  startDate  String
+  endDate    String
+  leaveType  LeaveType   @default(ANNUAL)
+  status     LeaveStatus @default(APPROVED)
+  reason     String?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+model EmployeeWeeklyOff {
+  id           String   @id @default(uuid())
+  employeeId   String
+  employee     Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  dayOfWeek    Int
+  isStandard   Boolean  @default(true)
+  specificDate String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([employeeId, dayOfWeek, specificDate])
+}
+
+model Roster {
+  id          String           @id @default(uuid())
+  monthYear   String           @unique
+  status      RosterStatus     @default(DRAFT)
+  generatedAt DateTime         @default(now())
+  publishedAt DateTime?
+  metadata    String?
+  shifts      RosterShift[]
+  conflicts   RosterConflict[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model RosterShift {
+  id               String            @id @default(uuid())
+  rosterId         String
+  roster           Roster            @relation(fields: [rosterId], references: [id], onDelete: Cascade)
+  shiftDate        String
+  employeeId       String
+  employee         Employee          @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  processId        String?
+  process          Process?          @relation(fields: [processId], references: [id], onDelete: Cascade)
+  status           RosterShiftStatus @default(WORKING)
+  shiftType        ShiftType         @default(REGULAR)
+  isManualOverride Boolean           @default(false)
+  overrideReason   String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@unique([rosterId, shiftDate, employeeId, processId])
+  @@index([rosterId, shiftDate])
+  @@index([employeeId, shiftDate])
+}
+
+model RosterConflict {
+  id          String           @id @default(uuid())
+  rosterId    String
+  roster      Roster           @relation(fields: [rosterId], references: [id], onDelete: Cascade)
+  shiftDate   String
+  severity    ConflictSeverity
+  category    ConflictCategory
+  processId   String?
+  employeeId  String?
+  message     String
+  detailsJson String?
+  isResolved  Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
