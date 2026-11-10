@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://smart-roster-management-acwb.onrender.com/api/:path*"
+    }
+  ]
+}

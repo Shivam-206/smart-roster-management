@@ -1,4 +1,6 @@
-const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
+const apiBaseUrl = import.meta.env.PROD
+  ? ""
+  : (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
 let csrfToken: string | null = null;
 
 export function cacheCsrfToken(token: string | null): void {

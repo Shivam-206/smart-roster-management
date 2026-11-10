@@ -126,7 +126,7 @@ Frontend:
 
 | Variable | Purpose |
 |---|---|
-| `VITE_API_BASE_URL` | Backend origin compiled into the frontend build, e.g. `https://api.example.com`; leave empty for local proxy use. |
+| `VITE_API_BASE_URL` | Optional local-development API origin. Production builds use relative `/api` paths and the Vercel rewrite; leave this unset/empty in Vercel. |
 | `VITE_API_PROXY_TARGET` | Optional Vite development proxy target; defaults to `http://localhost:5000`. |
 
 Only public, non-secret values belong in Vite variables: `VITE_*` values are included in browser assets.
@@ -180,6 +180,7 @@ The application can be hosted as a static Vite frontend and a Node.js/Express ba
 
 Deployment is configured as follows:
 
+<<<<<<< HEAD
 - **Frontend:** Vercel — https://smart-roster-management.vercel.app
 - **Backend:** Render — https://smart-roster-management-acwb.onrender.com
 - **Database:** Neon PostgreSQL
@@ -187,6 +188,15 @@ Deployment is configured as follows:
 The backend is configured with `NODE_ENV=production`, the production database connection, an exact `CORS_ORIGINS` allowlist for the Vercel frontend, and `AUTH_COOKIE_SAME_SITE=none` for cross-site HTTPS cookies. The frontend's `VITE_API_BASE_URL` is set to the Render backend origin at build time. The authentication flow was tested against the deployed frontend and backend: login succeeds and the cross-site session cookie is accepted by subsequent authenticated requests.
 
 For a fresh deployment, apply reviewed Prisma migrations to the intended database before starting the application, configure the environment variables above, bootstrap the first administrator once, and verify login, session restoration, logout, role restrictions, and the main roster workflows. Never commit production secrets or place administrator credentials in this README.
+=======
+1. Configure the Vercel project Root Directory as `frontend`, with `npm run build` and `dist` as the output directory. The checked-in `frontend/vercel.json` proxies `/api/:path*` to the Render API; leave `VITE_API_BASE_URL` unset or empty in Vercel.
+2. Set backend `DATABASE_URL`, `NODE_ENV=production`, `PORT` as required by Render, and `CORS_ORIGINS` to include the exact frontend origin(s), including `https://smart-roster-management.vercel.app`.
+3. Build and publish `frontend/dist`. Browser API calls use the Vercel origin; Vercel forwards them to Render, so the browser stores and sends the HttpOnly session cookie as a first-party cookie. Keep frontend requests credentialed.
+4. Review the migration SQL and run `npm run prisma:deploy` against the intended database from a trusted deployment job.
+5. Confirm the backend `/api/health` endpoint responds, the Vercel `/api/health` rewrite works, login sets a cookie for the Vercel origin, authenticated API requests include it, CORS allows only configured frontend origins, and backups/monitoring are enabled.
+
+**Security deployment gate:** before public use, verify the deployed database schema and administrator setup, HTTPS, CORS origin allowlist, and the full login-to-authenticated-request cookie flow through the Vercel rewrite. No deployment change or successful production verification is performed by this repository update.
+>>>>>>> b4c09e3 (Fix production authentication with same-origin API proxy)
 
 ## Known limitations and future work
 
