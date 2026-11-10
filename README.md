@@ -1,5 +1,14 @@
 # Smart Roster Management System
 
+## Live application
+
+- **Frontend:** https://smart-roster-management.vercel.app
+- **Backend API:** https://smart-roster-management-acwb.onrender.com
+- **Backend health check:** https://smart-roster-management-acwb.onrender.com/api/health
+- **Source code:** https://github.com/Shivam-206/smart-roster-management
+
+The frontend is deployed on Vercel, the Express API is deployed on Render, and the application uses PostgreSQL hosted on Neon. The backend root URL is an API service and does not serve the frontend; use the frontend link above to access the application.
+
 A web application for maintaining operational staffing data and generating, reviewing, and manually correcting monthly employee rosters.
 
 ## Problem and scope
@@ -145,7 +154,7 @@ The bootstrap command is not run at startup. It creates an administrator only if
 
 Use reviewed, versioned Prisma migrations for persistent environments. `npm run prisma:deploy` runs `prisma migrate deploy`; it does not reset the database. The authentication migration adds only `UserRole`, `User`, and `UserSession`; it does not modify existing roster/master data. Review migration SQL and obtain approval before applying it to the configured existing database. `prisma:push` is retained for development workflows and is not the documented production deployment procedure.
 
-**The sample seed script is destructive:** it deletes roster and master/availability records before recreating fixtures. It refuses to run unless `ALLOW_DESTRUCTIVE_SEED=true` is explicitly set. Only run it against a disposable, backed-up development database; never use it against an existing or production database. This project has not been seeded as part of this delivery.
+**The sample seed script is destructive:** it deletes roster and master/availability records before recreating fixtures. It refuses to run unless `ALLOW_DESTRUCTIVE_SEED=true` is explicitly set. Only run it against a disposable, backed-up development database; never use it against an existing or production database. Do not rerun the seed script against the deployed Neon database.
 
 ## Tests and builds
 
@@ -169,15 +178,15 @@ The integration tests use PostgreSQL data and some database-inventory tests expe
 
 The application can be hosted as a static Vite frontend and a Node.js/Express backend, with PostgreSQL hosted by Neon or another managed PostgreSQL provider. The backend start command is `npm start` after `npm run build`; the frontend deployment command is `npm run build`, with `dist/` as the static output directory.
 
-Before deploying:
+Deployment is configured as follows:
 
-1. Provision frontend and backend services, and set their production environment values in the hosting providers' secret/configuration settings.
-2. Set backend `DATABASE_URL`, `NODE_ENV=production`, `PORT` as required by the host, and `CORS_ORIGINS` to the exact frontend origin(s).
-3. Set frontend `VITE_API_BASE_URL` to the backend HTTPS origin **at build time**, then build and publish `frontend/dist`.
-4. Review the migration SQL and run `npm run prisma:deploy` against the intended database from a trusted deployment job.
-5. Confirm the backend `/api/health` endpoint responds, the frontend can reach the API, CORS allows only the configured frontend, and backups/monitoring are enabled.
+- **Frontend:** Vercel — https://smart-roster-management.vercel.app
+- **Backend:** Render — https://smart-roster-management-acwb.onrender.com
+- **Database:** Neon PostgreSQL
 
-**Security deployment gate:** authentication and role enforcement are implemented, but they have not been verified against the deployed database because the migration must be reviewed and manually approved first. Do not expose the application until the migration is applied, the initial administrator is bootstrapped, HTTPS and cookie/CORS settings are configured, and the auth verification checklist passes. No deployment URL or deployment success is claimed here.
+The backend is configured with `NODE_ENV=production`, the production database connection, an exact `CORS_ORIGINS` allowlist for the Vercel frontend, and `AUTH_COOKIE_SAME_SITE=none` for cross-site HTTPS cookies. The frontend's `VITE_API_BASE_URL` is set to the Render backend origin at build time. The authentication flow was tested against the deployed frontend and backend: login succeeds and the cross-site session cookie is accepted by subsequent authenticated requests.
+
+For a fresh deployment, apply reviewed Prisma migrations to the intended database before starting the application, configure the environment variables above, bootstrap the first administrator once, and verify login, session restoration, logout, role restrictions, and the main roster workflows. Never commit production secrets or place administrator credentials in this README.
 
 ## Known limitations and future work
 
