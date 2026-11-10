@@ -154,9 +154,85 @@ export interface ProcessFormData {
   defaultMinStaff: number;
 }
 
+export type AssignmentType = "PRIMARY" | "SECONDARY_BACKUP" | "FLOAT";
+
+export interface EmployeeProcessAssignment {
+  id: string;
+  employeeId: string;
+  processId: string;
+  assignmentType: AssignmentType;
+  priorityRank: number;
+  employee: {
+    id: string;
+    name: string;
+    employeeCode: string;
+    email: string;
+    role: string;
+    isPodLead: boolean;
+    podId: string | null;
+    pod: {
+      id: string;
+      code: string;
+      name: string;
+    } | null;
+  };
+  process: {
+    id: string;
+    code: string;
+    name: string;
+    brandId: string;
+    brand: {
+      id: string;
+      code: string;
+      name: string;
+      pod?: {
+        id: string;
+        code: string;
+        name: string;
+      };
+    };
+  };
+}
+
 export interface WeeklyOff {
   dayOfWeek: number;
   isStandard: boolean;
+}
+
+export interface EmployeeWeeklyOffRecord extends WeeklyOff {
+  id: string;
+  employeeId: string;
+  specificDate: string | null;
+  employee: { id: string; name: string; employeeCode: string };
+}
+
+export type LeaveType = "ANNUAL" | "SICK" | "CASUAL" | "COMP_OFF";
+export type LeaveStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+export interface EmployeeLeaveRecord {
+  id: string;
+  employeeId: string;
+  startDate: string;
+  endDate: string;
+  leaveType: LeaveType;
+  status: LeaveStatus;
+  reason: string | null;
+  employee: { id: string; name: string; employeeCode: string };
+}
+
+export interface PublicHoliday {
+  id: string;
+  date: string;
+  name: string;
+  isMandatoryOff: boolean;
+  description: string | null;
+}
+
+export interface CoverageRule extends ProcessCoverageRule {
+  processId: string;
+  dateOverride: string | null;
+  dayOfWeek: number | null;
+  note: string | null;
 }
 
 export interface Employee {

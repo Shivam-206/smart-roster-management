@@ -1,22 +1,23 @@
 import { Router, Request, Response } from "express";
 import { z } from "zod";
 import { prisma } from "../prisma.js";
+import { getProcessScheduleForDate } from "../scheduling.js";
 
 const router = Router();
 
 const processInputSchema = z.object({
   code: z
-    .string({ required_error: "Process code is required" })
+    .string({ error: "Process code is required" })
     .trim()
     .min(2, "Process code must be at least 2 characters")
     .max(30, "Process code cannot exceed 30 characters")
     .transform((val) => val.toUpperCase()),
   name: z
-    .string({ required_error: "Process name is required" })
+    .string({ error: "Process name is required" })
     .trim()
     .min(2, "Process name must be at least 2 characters")
     .max(120, "Process name cannot exceed 120 characters"),
-  brandId: z.string({ required_error: "Brand ID is required" }).uuid("Invalid Brand ID"),
+  brandId: z.string({ error: "Brand ID is required" }).uuid("Invalid Brand ID"),
   calendarType: z.enum(
     [
       "ALL_365_DAYS",
@@ -24,13 +25,217 @@ const processInputSchema = z.object({
       "ALL_EXCEPT_SUNDAYS_AND_PUBLIC_HOLIDAYS",
       "CUSTOM",
     ],
-    { required_error: "Calendar type is required" }
+    { error: "Calendar type is required" }
   ),
   defaultMinStaff: z.number().int().min(1, "Minimum staffing must be at least 1").default(1),
   description: z.string().trim().max(500).optional().nullable(),
 });
 
 const processUpdateSchema = processInputSchema.partial();
+const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((value) => {
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(date.valueOf()) && date.toISOString().slice(0, 10) === value;
+}, "Date must be a valid YYYY-MM-DD date");
+const coverageRuleBaseSchema = z.object({
+  dateOverride: dateSchema.nullable().optional(),
+  dayOfWeek: z.number().int().min(0).max(6).nullable().optional(),
+  requiredStaffCount: z.number().int().min(1, "Required staff must be a positive integer"),
+  note: z.string().trim().max(500).nullable().optional(),
+});
+const coverageRuleSchema = coverageRuleBaseSchema.superRefine((value, context) => {
+  const hasDate = Boolean(value.dateOverride);
+  const hasDay = value.dayOfWeek !== undefined && value.dayOfWeek !== null;
+  if (hasDate === hasDay) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["dateOverride"],
+      message: "Specify exactly one of dateOverride or dayOfWeek",
+    });
+  }
+});
+const coverageRuleUpdateSchema = coverageRuleBaseSchema.partial();
+const idSchema = z.string().uuid();
+
+function sendValidationError(res: Response, error: z.ZodError): void {
+  res.status(400).json({
+    success: false,
+    message: "Validation failed",
+    errors: error.flatten().fieldErrors,
+  });
+}
+
+router.get("/:id/calendar", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const processId = idSchema.safeParse(req.params.id);
+    const date = dateSchema.safeParse(req.query.date);
+    if (!processId.success) {
+      res.status(400).json({ success: false, message: "Invalid Process ID" });
+      return;
+    }
+    if (!date.success) {
+      sendValidationError(res, date.error);
+      return;
+    }
+    const processItem = await prisma.process.findUnique({
+      where: { id: processId.data },
+      include: { coverageRules: true },
+    });
+    if (!processItem) {
+      res.status(404).json({ success: false, message: "Process not found" });
+      return;
+    }
+    const holiday = await prisma.publicHoliday.findUnique({
+      where: { date: date.data },
+      select: { isMandatoryOff: true },
+    });
+    const schedule = getProcessScheduleForDate(
+      processItem.calendarType,
+      date.data,
+      holiday?.isMandatoryOff === true,
+      processItem.coverageRules,
+      processItem.defaultMinStaff
+    );
+    res.json({
+      success: true,
+      data: {
+        processId: processItem.id,
+        date: date.data,
+        calendarType: processItem.calendarType,
+        ...schedule,
+      },
+    });
+  } catch (error) {
+    console.error("Error evaluating process calendar:", error);
+    res.status(500).json({ success: false, message: "Internal server error evaluating process calendar" });
+  }
+});
+
+router.get("/:id/coverage-rules", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const processId = idSchema.safeParse(req.params.id);
+    if (!processId.success) {
+      res.status(400).json({ success: false, message: "Invalid Process ID" });
+      return;
+    }
+    const exists = await prisma.process.findUnique({ where: { id: processId.data }, select: { id: true } });
+    if (!exists) {
+      res.status(404).json({ success: false, message: "Process not found" });
+      return;
+    }
+    const rules = await prisma.processCoverageRule.findMany({
+      where: { processId: processId.data },
+      orderBy: [{ dateOverride: "asc" }, { dayOfWeek: "asc" }],
+    });
+    res.json({ success: true, count: rules.length, data: rules });
+  } catch (error) {
+    console.error("Error fetching process coverage rules:", error);
+    res.status(500).json({ success: false, message: "Internal server error fetching coverage rules" });
+  }
+});
+
+router.post("/:id/coverage-rules", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const processId = idSchema.safeParse(req.params.id);
+    if (!processId.success) {
+      res.status(400).json({ success: false, message: "Invalid Process ID" });
+      return;
+    }
+    const parsed = coverageRuleSchema.safeParse(req.body);
+    if (!parsed.success) return sendValidationError(res, parsed.error);
+    const exists = await prisma.process.findUnique({ where: { id: processId.data }, select: { id: true } });
+    if (!exists) {
+      res.status(404).json({ success: false, message: "Process not found" });
+      return;
+    }
+    const duplicate = await prisma.processCoverageRule.findFirst({
+      where: parsed.data.dateOverride
+        ? { processId: processId.data, dateOverride: parsed.data.dateOverride }
+        : { processId: processId.data, dayOfWeek: parsed.data.dayOfWeek },
+    });
+    if (duplicate) {
+      res.status(409).json({ success: false, message: "A staffing rule already exists for this date or weekday" });
+      return;
+    }
+    const created = await prisma.processCoverageRule.create({
+      data: { ...parsed.data, processId: processId.data },
+    });
+    res.status(201).json({ success: true, data: created });
+  } catch (error) {
+    console.error("Error creating process coverage rule:", error);
+    res.status(500).json({ success: false, message: "Internal server error creating coverage rule" });
+  }
+});
+
+router.patch("/coverage-rules/:ruleId", async (req: Request, res: Response): Promise<void> => {
+  await updateCoverageRule(req, res);
+});
+router.put("/coverage-rules/:ruleId", async (req: Request, res: Response): Promise<void> => {
+  await updateCoverageRule(req, res);
+});
+
+async function updateCoverageRule(req: Request, res: Response): Promise<void> {
+  try {
+    const ruleId = idSchema.safeParse(req.params.ruleId);
+    if (!ruleId.success) {
+      res.status(400).json({ success: false, message: "Invalid coverage rule ID" });
+      return;
+    }
+    const parsed = coverageRuleUpdateSchema.safeParse(req.body);
+    if (!parsed.success) return sendValidationError(res, parsed.error);
+    if (Object.keys(parsed.data).length === 0) {
+      res.status(400).json({ success: false, message: "At least one field is required" });
+      return;
+    }
+    const existing = await prisma.processCoverageRule.findUnique({ where: { id: ruleId.data } });
+    if (!existing) {
+      res.status(404).json({ success: false, message: "Coverage rule not found" });
+      return;
+    }
+    const merged = coverageRuleSchema.safeParse({ ...existing, ...parsed.data });
+    if (!merged.success) return sendValidationError(res, merged.error);
+    const duplicate = await prisma.processCoverageRule.findFirst({
+      where: {
+        id: { not: ruleId.data },
+        processId: existing.processId,
+        ...(merged.data.dateOverride
+          ? { dateOverride: merged.data.dateOverride }
+          : { dayOfWeek: merged.data.dayOfWeek }),
+      },
+    });
+    if (duplicate) {
+      res.status(409).json({ success: false, message: "A staffing rule already exists for this date or weekday" });
+      return;
+    }
+    const updated = await prisma.processCoverageRule.update({
+      where: { id: ruleId.data },
+      data: parsed.data,
+    });
+    res.json({ success: true, data: updated });
+  } catch (error) {
+    console.error("Error updating process coverage rule:", error);
+    res.status(500).json({ success: false, message: "Internal server error updating coverage rule" });
+  }
+}
+
+router.delete("/coverage-rules/:ruleId", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const ruleId = idSchema.safeParse(req.params.ruleId);
+    if (!ruleId.success) {
+      res.status(400).json({ success: false, message: "Invalid coverage rule ID" });
+      return;
+    }
+    const exists = await prisma.processCoverageRule.findUnique({ where: { id: ruleId.data }, select: { id: true } });
+    if (!exists) {
+      res.status(404).json({ success: false, message: "Coverage rule not found" });
+      return;
+    }
+    await prisma.processCoverageRule.delete({ where: { id: ruleId.data } });
+    res.json({ success: true, message: "Coverage rule deleted" });
+  } catch (error) {
+    console.error("Error deleting process coverage rule:", error);
+    res.status(500).json({ success: false, message: "Internal server error deleting coverage rule" });
+  }
+});
 
 // GET /api/v1/processes - List all processes with brand and stats
 router.get("/", async (req: Request, res: Response): Promise<void> => {

@@ -1,24 +1,71 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { 
   Users, 
   Building2, 
   Calendar, 
+  CalendarDays,
   Layers, 
   SlidersHorizontal,
   Clock,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  Shield,
+  LogOut
 } from "lucide-react";
 import EmployeeManagement from "./components/employees/EmployeeManagement";
 import PodManagement from "./components/pods/PodManagement";
 import BrandProcessManagement from "./components/brands/BrandProcessManagement";
+import AssignmentsManagement from "./components/assignments/AssignmentsManagement";
+import AvailabilityManagement from "./components/availability/AvailabilityManagement";
+import MonthlyRosterGeneration from "./components/rosters/MonthlyRosterGeneration";
+import MonthlyRosterViews from "./components/rosters/MonthlyRosterViews";
 import { fetchEmployees } from "./api/employees";
 import { fetchPods } from "./api/pods";
 import { fetchBrands } from "./api/brands";
+import { AuthUser, fetchCurrentUser, logout } from "./api/auth";
+import Login from "./components/auth/Login";
+import UserManagement from "./components/auth/UserManagement";
 
 export default function App() {
+  const authQuery = useQuery({
+    queryKey: ["auth", "current-user"],
+    queryFn: fetchCurrentUser,
+    retry: false,
+  });
+
+  if (authQuery.isLoading) {
+    return <main className="min-h-screen flex items-center justify-center text-sm text-slate-500">Checking session...</main>;
+  }
+  if (authQuery.isError) {
+    return <main className="min-h-screen flex flex-col items-center justify-center gap-3 text-sm text-rose-700">
+      <p>Unable to verify your sign-in session.</p>
+      <button onClick={() => void authQuery.refetch()} className="rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white">Retry</button>
+    </main>;
+  }
+  if (!authQuery.data) return <Login />;
+
+  return <ApplicationShell user={authQuery.data} />;
+}
+
+function ApplicationShell({ user }: { user: AuthUser }) {
   const [activeTab, setActiveTab] = useState("brands");
+  const queryClient = useQueryClient();
+  const logoutMutation = useMutation({
+    mutationFn: logout,
+    onSuccess: () => {
+      queryClient.clear();
+      queryClient.setQueryData(["auth", "current-user"], null);
+    },
+  });
+  useEffect(() => {
+    const expireSession = () => {
+      queryClient.clear();
+      queryClient.setQueryData(["auth", "current-user"], null);
+    };
+    window.addEventListener("auth:expired", expireSession);
+    return () => window.removeEventListener("auth:expired", expireSession);
+  }, [queryClient]);
 
   // Query overall active counts for dynamic header badge
   const { data: employees = [] } = useQuery({
@@ -60,6 +107,18 @@ export default function App() {
                 Neon Connected • {employees.length || 32} Staff • {pods.length || 4} Pods • {brands.length || 14} Brands
               </span>
             </div>
+            <div className="hidden text-right sm:block">
+              <p className="text-sm font-semibold text-slate-800">{user.name}</p>
+              <p className="text-xs text-slate-500">{user.role}</p>
+            </div>
+            <button
+              onClick={() => logoutMutation.mutate()}
+              disabled={logoutMutation.isPending}
+              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="hidden sm:inline">{logoutMutation.isPending ? "Signing out..." : "Sign out"}</span>
+            </button>
           </div>
         </div>
       </header>
@@ -73,8 +132,10 @@ export default function App() {
             { id: "employees", label: `Employees (${employees.length || 32})`, icon: Users },
             { id: "dashboard", label: "Dashboard", icon: Sparkles },
             { id: "roster", label: "Monthly Roster", icon: Calendar },
-            { id: "assignments", label: "Assignment Matrix", icon: SlidersHorizontal },
-            { id: "availability", label: "Holidays & Leaves", icon: Clock },
+            { id: "roster-views", label: "Roster Views", icon: CalendarDays },
+            { id: "assignments", label: "Assignments", icon: SlidersHorizontal },
+            { id: "availability", label: "Availability & Rules", icon: Clock },
+            ...(user.role === "ADMIN" ? [{ id: "user-admin", label: "User Accounts", icon: Shield }] : []),
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -104,6 +165,16 @@ export default function App() {
           <PodManagement />
         ) : activeTab === "employees" ? (
           <EmployeeManagement />
+        ) : activeTab === "assignments" ? (
+          <AssignmentsManagement />
+        ) : activeTab === "availability" ? (
+          <AvailabilityManagement />
+        ) : activeTab === "roster" ? (
+          <MonthlyRosterGeneration />
+        ) : activeTab === "roster-views" ? (
+          <MonthlyRosterViews />
+        ) : activeTab === "user-admin" && user.role === "ADMIN" ? (
+          <UserManagement currentUserId={user.id} />
         ) : activeTab === "dashboard" ? (
           <div className="space-y-6">
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center">

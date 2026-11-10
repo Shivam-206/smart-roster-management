@@ -1,4 +1,5 @@
 import { Employee, EmployeeFormData, Pod } from "../types";
+import { apiFetch } from "./client";
 
 export async function fetchEmployees(params?: {
   search?: string;
@@ -12,7 +13,7 @@ export async function fetchEmployees(params?: {
     query.set("podId", params.podId);
   }
 
-  const res = await fetch(`/api/v1/employees?${query.toString()}`);
+  const res = await apiFetch(`/api/v1/employees?${query.toString()}`);
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.message || "Failed to fetch employees");
@@ -23,7 +24,7 @@ export async function fetchEmployees(params?: {
 }
 
 export async function fetchPods(): Promise<Pod[]> {
-  const res = await fetch("/api/v1/pods");
+  const res = await apiFetch("/api/v1/pods");
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.message || "Failed to fetch operational pods");
@@ -34,7 +35,7 @@ export async function fetchPods(): Promise<Pod[]> {
 }
 
 export async function createEmployee(data: EmployeeFormData): Promise<Employee> {
-  const res = await fetch("/api/v1/employees", {
+  const res = await apiFetch("/api/v1/employees", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -52,7 +53,7 @@ export async function updateEmployee(
   id: string,
   data: Partial<EmployeeFormData>
 ): Promise<Employee> {
-  const res = await fetch(`/api/v1/employees/${id}`, {
+  const res = await apiFetch(`/api/v1/employees/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -67,7 +68,7 @@ export async function updateEmployee(
 }
 
 export async function deleteEmployee(id: string): Promise<string> {
-  const res = await fetch(`/api/v1/employees/${id}`, {
+  const res = await apiFetch(`/api/v1/employees/${id}`, {
     method: "DELETE",
   });
 

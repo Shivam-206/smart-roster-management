@@ -6,18 +6,18 @@ const router = Router();
 
 const brandInputSchema = z.object({
   code: z
-    .string({ required_error: "Brand code is required" })
+    .string({ error: "Brand code is required" })
     .trim()
     .min(2, "Brand code must be at least 2 characters")
     .max(20, "Brand code cannot exceed 20 characters")
     .transform((val) => val.toUpperCase()),
   name: z
-    .string({ required_error: "Brand name is required" })
+    .string({ error: "Brand name is required" })
     .trim()
     .min(2, "Brand name must be at least 2 characters")
     .max(100, "Brand name cannot exceed 100 characters"),
   description: z.string().trim().max(500).optional().nullable(),
-  podId: z.string({ required_error: "Pod ID is required" }).uuid("Invalid Pod ID"),
+  podId: z.string({ error: "Pod ID is required" }).uuid("Invalid Pod ID"),
   isSingleResource: z.boolean().default(true),
 });
 

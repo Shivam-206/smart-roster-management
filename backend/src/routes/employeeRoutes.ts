@@ -6,18 +6,18 @@ const router = Router();
 
 const employeeInputSchema = z.object({
   employeeCode: z
-    .string({ required_error: "Employee code is required" })
+    .string({ error: "Employee code is required" })
     .trim()
     .min(2, "Employee code must be at least 2 characters")
     .max(20, "Employee code cannot exceed 20 characters")
     .transform((val) => val.toUpperCase()),
   name: z
-    .string({ required_error: "Name is required" })
+    .string({ error: "Name is required" })
     .trim()
     .min(2, "Name must be at least 2 characters")
     .max(100, "Name cannot exceed 100 characters"),
   email: z
-    .string({ required_error: "Email is required" })
+    .string({ error: "Email is required" })
     .trim()
     .email("Invalid email address")
     .toLowerCase(),

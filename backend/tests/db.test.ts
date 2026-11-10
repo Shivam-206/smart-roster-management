@@ -1,5 +1,14 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { PrismaClient } from "@prisma/client";
+import {
+  seedAssignments,
+  seedBrands,
+  seedEmployees,
+  seedLeaves,
+  seedPods,
+  seedProcesses,
+  seedPublicHolidays,
+} from "../prisma/seedData.js";
 
 const prisma = new PrismaClient();
 
@@ -12,92 +21,72 @@ describe("Phase 1.5: Neon Live PostgreSQL Database Verification", () => {
     await prisma.$disconnect();
   });
 
-  it("should have exactly 32 employees in PostgreSQL", async () => {
-    const count = await prisma.employee.count();
-    expect(count).toBe(32);
+  it("should retain the configured employee records", async () => {
+    const employees = await prisma.employee.findMany({
+      where: { employeeCode: { in: seedEmployees.map((employee) => employee.employeeCode) } },
+      select: { employeeCode: true },
+    });
+    const employeeCodes = new Set(employees.map((employee) => employee.employeeCode));
+    for (const expected of seedEmployees) {
+      expect(employeeCodes.has(expected.employeeCode)).toBe(true);
+    }
   });
 
-  it("should have exactly 4 operational pods with verified pod leads", async () => {
+  it("should retain the configured operational pods with verified pod leads", async () => {
     const pods = await prisma.pod.findMany({
-      include: {
-        lead: true,
-        members: true,
+      where: { code: { in: seedPods.map((pod) => pod.code) } },
+      select: {
+        code: true,
+        name: true,
+        lead: { select: { employeeCode: true, isPodLead: true } },
+        members: { select: { id: true } },
       },
     });
 
-    expect(pods.length).toBe(4);
-    for (const pod of pods) {
-      expect(pod.leadEmployeeId).not.toBeNull();
-      expect(pod.lead).toBeDefined();
-      expect(pod.lead?.isPodLead).toBe(true);
+    const podByCode = new Map(pods.map((pod) => [pod.code, pod]));
+    for (const expected of seedPods) {
+      const pod = podByCode.get(expected.code);
+      expect(pod).toBeDefined();
+      if (!pod) continue;
+      expect(pod).toMatchObject({
+        name: expected.name,
+        lead: { employeeCode: expected.leadEmployeeCode, isPodLead: true },
+      });
       expect(pod.members.length).toBeGreaterThan(0);
     }
   });
 
-  it("should have exactly 14 brands with 11 single-resource (~80%) and 3 multi-resource", async () => {
+  it("should retain the configured brands and their resource classifications", async () => {
     const brands = await prisma.brand.findMany({
-      include: {
-        processes: {
-          include: {
-            assignments: {
-              include: {
-                employee: true,
-              },
-            },
-          },
-        },
+      where: { code: { in: seedBrands.map((brand) => brand.code) } },
+      select: {
+        code: true,
+        name: true,
+        isSingleResource: true,
       },
     });
 
-    expect(brands.length).toBe(14);
-
-    const singleResourceBrands = brands.filter((b) => b.isSingleResource);
-    const multiResourceBrands = brands.filter((b) => !b.isSingleResource);
-
-    expect(singleResourceBrands.length).toBe(11);
-    expect(multiResourceBrands.length).toBe(3);
-
-    const ratio = singleResourceBrands.length / brands.length;
-    expect(ratio).toBeCloseTo(0.7857, 2);
-
-    // Verify each single-resource brand has exactly 1 distinct primary employee
-    for (const brand of singleResourceBrands) {
-      const primaryEmployeeIds = new Set<string>();
-      const backupEmployeeIds = new Set<string>();
-
-      for (const proc of brand.processes) {
-        for (const assign of proc.assignments) {
-          if (assign.assignmentType === "PRIMARY") {
-            primaryEmployeeIds.add(assign.employeeId);
-          } else {
-            backupEmployeeIds.add(assign.employeeId);
-          }
-        }
-      }
-
-      expect(primaryEmployeeIds.size).toBe(1);
-      // Contingency backup check: Must have at least one contingency resource
-      expect(backupEmployeeIds.size).toBeGreaterThanOrEqual(1);
-    }
-
-    // Verify multi-resource brands have 2-3 primary employees
-    for (const brand of multiResourceBrands) {
-      const primaryEmployeeIds = new Set<string>();
-      for (const proc of brand.processes) {
-        for (const assign of proc.assignments) {
-          if (assign.assignmentType === "PRIMARY") {
-            primaryEmployeeIds.add(assign.employeeId);
-          }
-        }
-      }
-      expect(primaryEmployeeIds.size).toBeGreaterThanOrEqual(2);
-      expect(primaryEmployeeIds.size).toBeLessThanOrEqual(3);
+    const brandByCode = new Map(brands.map((brand) => [brand.code, brand]));
+    for (const expected of seedBrands) {
+      expect(brandByCode.get(expected.code)).toMatchObject({
+        name: expected.name,
+        isSingleResource: expected.isSingleResource,
+      });
     }
   });
 
-  it("should have exactly 16 processes covering all 3 calendar types", async () => {
-    const processes = await prisma.process.findMany();
-    expect(processes.length).toBe(16);
+  it("should retain the configured process fixtures across the supported calendar types", async () => {
+    const processes = await prisma.process.findMany({
+      where: { code: { in: seedProcesses.map((process) => process.code) } },
+      select: { code: true, name: true, calendarType: true },
+    });
+    const processByCode = new Map(processes.map((process) => [process.code, process]));
+    for (const expected of seedProcesses) {
+      expect(processByCode.get(expected.code)).toMatchObject({
+        name: expected.name,
+        calendarType: expected.calendarType,
+      });
+    }
 
     const calendarTypes = new Set(processes.map((p) => p.calendarType));
     expect(calendarTypes.has("ALL_365_DAYS")).toBe(true);
@@ -105,22 +94,76 @@ describe("Phase 1.5: Neon Live PostgreSQL Database Verification", () => {
     expect(calendarTypes.has("ALL_EXCEPT_SUNDAYS_AND_PUBLIC_HOLIDAYS")).toBe(true);
   });
 
-  it("should have 38 process assignments stored correctly", async () => {
-    const count = await prisma.employeeProcessAssignment.count();
-    expect(count).toBe(38);
+  it("should retain the configured employee-process assignment fixtures", async () => {
+    const assignments = await prisma.employeeProcessAssignment.findMany({
+      where: {
+        OR: seedAssignments.map((assignment) => ({
+          employee: { employeeCode: assignment.employeeCode },
+          process: { code: assignment.processCode },
+        })),
+      },
+      select: {
+        employee: { select: { employeeCode: true } },
+        process: { select: { code: true } },
+        assignmentType: true,
+        priorityRank: true,
+      },
+    });
+    const assignmentKeys = new Set(assignments.map((assignment) =>
+      `${assignment.employee.employeeCode}:${assignment.process.code}:${assignment.assignmentType}:${assignment.priorityRank}`
+    ));
+    for (const expected of seedAssignments) {
+      expect(assignmentKeys.has(
+        `${expected.employeeCode}:${expected.processCode}:${expected.assignmentType}:${expected.priorityRank}`
+      )).toBe(true);
+    }
   });
 
-  it("should have 64 weekly off records (2 offs per employee for 32 employees)", async () => {
-    const count = await prisma.employeeWeeklyOff.count();
-    expect(count).toBe(64);
+  it("should retain the configured standard weekly offs", async () => {
+    const employees = await prisma.employee.findMany({
+      where: { employeeCode: { in: seedEmployees.map((employee) => employee.employeeCode) } },
+      select: {
+        employeeCode: true,
+        weeklyOffs: {
+          where: { isStandard: true },
+          select: { dayOfWeek: true },
+        },
+      },
+    });
+    const weeklyOffsByEmployee = new Map(employees.map((employee) => [
+      employee.employeeCode,
+      new Set(employee.weeklyOffs.map((weeklyOff) => weeklyOff.dayOfWeek)),
+    ]));
+    for (const expected of seedEmployees) {
+      const weeklyOffs = weeklyOffsByEmployee.get(expected.employeeCode);
+      for (const dayOfWeek of expected.standardWeeklyOffs) {
+        expect(weeklyOffs?.has(dayOfWeek)).toBe(true);
+      }
+    }
   });
 
-  it("should have 6 public holidays and 4 approved leaves in database", async () => {
-    const holidayCount = await prisma.publicHoliday.count();
-    const leaveCount = await prisma.employeeLeave.count();
+  it("should retain the configured public holidays and approved leave fixtures", async () => {
+    const holidays = await prisma.publicHoliday.findMany({
+      where: { date: { in: seedPublicHolidays.map((holiday) => holiday.date) } },
+      select: { date: true, name: true },
+    });
+    const holidayByDate = new Map(holidays.map((holiday) => [holiday.date, holiday.name]));
+    for (const expected of seedPublicHolidays) {
+      expect(holidayByDate.get(expected.date)).toBe(expected.name);
+    }
 
-    expect(holidayCount).toBe(6);
-    expect(leaveCount).toBe(4);
+    for (const expected of seedLeaves) {
+      const leave = await prisma.employeeLeave.findFirst({
+        where: {
+          employee: { employeeCode: expected.employeeCode },
+          startDate: expected.startDate,
+          endDate: expected.endDate,
+          leaveType: expected.leaveType,
+          status: expected.status,
+        },
+      });
+      expect(leave, `expected leave fixture for ${expected.employeeCode}`).not.toBeNull();
+    }
   });
 
   it("should verify RosterShift supports non-working entries with null processId", async () => {

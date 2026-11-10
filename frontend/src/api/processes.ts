@@ -1,4 +1,5 @@
 import { Process, ProcessFormData } from "../types";
+import { apiFetch } from "./client";
 
 export async function fetchProcesses(params?: {
   search?: string;
@@ -16,7 +17,7 @@ export async function fetchProcesses(params?: {
     query.set("calendarType", params.calendarType);
   }
 
-  const res = await fetch(`/api/v1/processes?${query.toString()}`);
+  const res = await apiFetch(`/api/v1/processes?${query.toString()}`);
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.message || "Failed to fetch processes");
@@ -27,7 +28,7 @@ export async function fetchProcesses(params?: {
 }
 
 export async function fetchProcessById(id: string): Promise<Process> {
-  const res = await fetch(`/api/v1/processes/${id}`);
+  const res = await apiFetch(`/api/v1/processes/${id}`);
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.message || "Failed to fetch process details");
@@ -38,7 +39,7 @@ export async function fetchProcessById(id: string): Promise<Process> {
 }
 
 export async function createProcess(data: ProcessFormData): Promise<Process> {
-  const res = await fetch("/api/v1/processes", {
+  const res = await apiFetch("/api/v1/processes", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -53,7 +54,7 @@ export async function createProcess(data: ProcessFormData): Promise<Process> {
 }
 
 export async function updateProcess(id: string, data: Partial<ProcessFormData>): Promise<Process> {
-  const res = await fetch(`/api/v1/processes/${id}`, {
+  const res = await apiFetch(`/api/v1/processes/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -68,7 +69,7 @@ export async function updateProcess(id: string, data: Partial<ProcessFormData>):
 }
 
 export async function deleteProcess(id: string): Promise<string> {
-  const res = await fetch(`/api/v1/processes/${id}`, {
+  const res = await apiFetch(`/api/v1/processes/${id}`, {
     method: "DELETE",
   });
 

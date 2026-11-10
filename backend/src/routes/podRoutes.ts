@@ -6,13 +6,13 @@ const router = Router();
 
 const podInputSchema = z.object({
   code: z
-    .string({ required_error: "Pod code is required" })
+    .string({ error: "Pod code is required" })
     .trim()
     .min(2, "Pod code must be at least 2 characters")
     .max(20, "Pod code cannot exceed 20 characters")
     .transform((val) => val.toUpperCase()),
   name: z
-    .string({ required_error: "Pod name is required" })
+    .string({ error: "Pod name is required" })
     .trim()
     .min(2, "Pod name must be at least 2 characters")
     .max(100, "Pod name cannot exceed 100 characters"),

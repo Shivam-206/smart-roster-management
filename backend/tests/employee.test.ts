@@ -2,9 +2,11 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { Server } from "http";
 import { app } from "../src/index.js";
 import { prisma } from "../src/prisma.js";
+import { installAuthenticatedTestApi } from "./helpers/authenticatedApi.js";
 
 let server: Server;
 let baseUrl: string;
+let cleanupAuth: (() => Promise<void>) | undefined;
 
 describe("Phase 2A: Employee CRUD API End-to-End Tests", () => {
   beforeAll(async () => {
@@ -18,12 +20,14 @@ describe("Phase 2A: Employee CRUD API End-to-End Tests", () => {
         resolve();
       });
     });
+    cleanupAuth = await installAuthenticatedTestApi(baseUrl, prisma);
   });
 
   afterAll(async () => {
     if (server) {
       await new Promise<void>((resolve) => server.close(() => resolve()));
     }
+    await cleanupAuth?.();
     await prisma.$disconnect();
   });
 

@@ -1,4 +1,5 @@
 import { Pod, PodDetails, PodFormData } from "../types";
+import { apiFetch } from "./client";
 
 export async function fetchPods(search?: string): Promise<Pod[]> {
   const query = new URLSearchParams();
@@ -6,7 +7,7 @@ export async function fetchPods(search?: string): Promise<Pod[]> {
     query.set("search", search.trim());
   }
 
-  const res = await fetch(`/api/v1/pods?${query.toString()}`);
+  const res = await apiFetch(`/api/v1/pods?${query.toString()}`);
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.message || "Failed to fetch pods");
@@ -17,7 +18,7 @@ export async function fetchPods(search?: string): Promise<Pod[]> {
 }
 
 export async function fetchPodById(id: string): Promise<PodDetails> {
-  const res = await fetch(`/api/v1/pods/${id}`);
+  const res = await apiFetch(`/api/v1/pods/${id}`);
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.message || "Failed to fetch pod details");
@@ -28,7 +29,7 @@ export async function fetchPodById(id: string): Promise<PodDetails> {
 }
 
 export async function createPod(data: PodFormData): Promise<Pod> {
-  const res = await fetch("/api/v1/pods", {
+  const res = await apiFetch("/api/v1/pods", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -43,7 +44,7 @@ export async function createPod(data: PodFormData): Promise<Pod> {
 }
 
 export async function updatePod(id: string, data: Partial<PodFormData>): Promise<Pod> {
-  const res = await fetch(`/api/v1/pods/${id}`, {
+  const res = await apiFetch(`/api/v1/pods/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -58,7 +59,7 @@ export async function updatePod(id: string, data: Partial<PodFormData>): Promise
 }
 
 export async function deletePod(id: string): Promise<string> {
-  const res = await fetch(`/api/v1/pods/${id}`, {
+  const res = await apiFetch(`/api/v1/pods/${id}`, {
     method: "DELETE",
   });
 
@@ -71,7 +72,7 @@ export async function deletePod(id: string): Promise<string> {
 }
 
 export async function transferPodMembers(targetPodId: string, employeeIds: string[]): Promise<string> {
-  const res = await fetch(`/api/v1/pods/${targetPodId}/members`, {
+  const res = await apiFetch(`/api/v1/pods/${targetPodId}/members`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ employeeIds }),

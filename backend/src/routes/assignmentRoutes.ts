@@ -6,14 +6,14 @@ const router = Router();
 
 const assignmentInputSchema = z.object({
   employeeId: z
-    .string({ required_error: "Employee ID is required" })
+    .string({ error: "Employee ID is required" })
     .uuid("Invalid Employee ID"),
   processId: z
-    .string({ required_error: "Process ID is required" })
+    .string({ error: "Process ID is required" })
     .uuid("Invalid Process ID"),
   assignmentType: z
     .enum(["PRIMARY", "SECONDARY_BACKUP", "FLOAT"], {
-      required_error: "Assignment tier is required",
+      error: "Assignment tier is required",
     })
     .default("PRIMARY"),
   priorityRank: z.number().int().min(1).max(10).default(1),
@@ -22,12 +22,36 @@ const assignmentInputSchema = z.object({
 const assignmentUpdateSchema = z.object({
   assignmentType: z.enum(["PRIMARY", "SECONDARY_BACKUP", "FLOAT"]).optional(),
   priorityRank: z.number().int().min(1).max(10).optional(),
+}).refine((value) => Object.keys(value).length > 0, "At least one assignment field is required");
+
+const assignmentFiltersSchema = z.object({
+  employeeId: z.union([z.literal("ALL"), z.string().uuid()]).optional(),
+  processId: z.union([z.literal("ALL"), z.string().uuid()]).optional(),
+  brandId: z.union([z.literal("ALL"), z.string().uuid()]).optional(),
+  podId: z.union([z.literal("ALL"), z.string().uuid()]).optional(),
+  assignmentType: z.union([
+    z.literal("ALL"),
+    z.enum(["PRIMARY", "SECONDARY_BACKUP", "FLOAT"]),
+  ]).optional(),
+  search: z.string().optional(),
 });
+
+const assignmentIdSchema = z.string().uuid("Invalid Assignment ID");
 
 // GET /api/v1/assignments - List assignments with employee, process, brand & pod details
 router.get("/", async (req: Request, res: Response): Promise<void> => {
   try {
-    const { employeeId, processId, brandId, podId, assignmentType, search } = req.query;
+    const parsedFilters = assignmentFiltersSchema.safeParse(req.query);
+    if (!parsedFilters.success) {
+      res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: parsedFilters.error.flatten().fieldErrors,
+      });
+      return;
+    }
+
+    const { employeeId, processId, brandId, podId, assignmentType, search } = parsedFilters.data;
 
     const whereClause: any = {};
 
@@ -142,13 +166,14 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
 router.get("/:id", async (req: Request, res: Response): Promise<void> => {
   try {
     const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-    if (!id) {
-      res.status(400).json({ success: false, message: "Assignment ID is required" });
+    const parsedId = assignmentIdSchema.safeParse(id);
+    if (!parsedId.success) {
+      res.status(400).json({ success: false, message: "Invalid Assignment ID" });
       return;
     }
 
     const assignment = await prisma.employeeProcessAssignment.findUnique({
-      where: { id },
+      where: { id: parsedId.data },
       include: {
         employee: {
           include: {
@@ -292,6 +317,18 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
     });
   } catch (error) {
     console.error("Error creating assignment:", error);
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "P2002"
+    ) {
+      res.status(409).json({
+        success: false,
+        message: "This employee is already assigned to this process",
+      });
+      return;
+    }
     res.status(500).json({
       success: false,
       message: "Internal server error creating assignment",
@@ -311,13 +348,14 @@ router.put("/:id", async (req: Request, res: Response): Promise<void> => {
 async function handleUpdateAssignment(req: Request, res: Response): Promise<void> {
   try {
     const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-    if (!id) {
-      res.status(400).json({ success: false, message: "Assignment ID is required" });
+    const parsedId = assignmentIdSchema.safeParse(id);
+    if (!parsedId.success) {
+      res.status(400).json({ success: false, message: "Invalid Assignment ID" });
       return;
     }
 
     const existing = await prisma.employeeProcessAssignment.findUnique({
-      where: { id },
+      where: { id: parsedId.data },
     });
 
     if (!existing) {
@@ -389,13 +427,14 @@ async function handleUpdateAssignment(req: Request, res: Response): Promise<void
 router.delete("/:id", async (req: Request, res: Response): Promise<void> => {
   try {
     const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-    if (!id) {
-      res.status(400).json({ success: false, message: "Assignment ID is required" });
+    const parsedId = assignmentIdSchema.safeParse(id);
+    if (!parsedId.success) {
+      res.status(400).json({ success: false, message: "Invalid Assignment ID" });
       return;
     }
 
     const assignment = await prisma.employeeProcessAssignment.findUnique({
-      where: { id },
+      where: { id: parsedId.data },
       include: {
         employee: true,
         process: true,
@@ -426,7 +465,7 @@ router.delete("/:id", async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    await prisma.employeeProcessAssignment.delete({ where: { id } });
+    await prisma.employeeProcessAssignment.delete({ where: { id: parsedId.data } });
 
     res.json({
       success: true,

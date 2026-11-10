@@ -202,6 +202,10 @@ export async function runSeed() {
 }
 
 if (process.env.NODE_ENV !== "test" && process.argv[1]?.includes("seed")) {
+  if (process.env.ALLOW_DESTRUCTIVE_SEED !== "true") {
+    console.error("Seed aborted: this script deletes existing database records. Set ALLOW_DESTRUCTIVE_SEED=true only for a disposable database.");
+    process.exit(1);
+  }
   runSeed()
     .catch((e) => {
       console.error("❌ Seed failed with error:", e);

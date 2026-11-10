@@ -1,4 +1,5 @@
 import { Brand, BrandFormData } from "../types";
+import { apiFetch } from "./client";
 
 export async function fetchBrands(params?: { search?: string; podId?: string }): Promise<Brand[]> {
   const query = new URLSearchParams();
@@ -9,7 +10,7 @@ export async function fetchBrands(params?: { search?: string; podId?: string }):
     query.set("podId", params.podId);
   }
 
-  const res = await fetch(`/api/v1/brands?${query.toString()}`);
+  const res = await apiFetch(`/api/v1/brands?${query.toString()}`);
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.message || "Failed to fetch brands");
@@ -20,7 +21,7 @@ export async function fetchBrands(params?: { search?: string; podId?: string }):
 }
 
 export async function fetchBrandById(id: string): Promise<Brand> {
-  const res = await fetch(`/api/v1/brands/${id}`);
+  const res = await apiFetch(`/api/v1/brands/${id}`);
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.message || "Failed to fetch brand details");
@@ -31,7 +32,7 @@ export async function fetchBrandById(id: string): Promise<Brand> {
 }
 
 export async function createBrand(data: BrandFormData): Promise<Brand> {
-  const res = await fetch("/api/v1/brands", {
+  const res = await apiFetch("/api/v1/brands", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -46,7 +47,7 @@ export async function createBrand(data: BrandFormData): Promise<Brand> {
 }
 
 export async function updateBrand(id: string, data: Partial<BrandFormData>): Promise<Brand> {
-  const res = await fetch(`/api/v1/brands/${id}`, {
+  const res = await apiFetch(`/api/v1/brands/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -61,7 +62,7 @@ export async function updateBrand(id: string, data: Partial<BrandFormData>): Pro
 }
 
 export async function deleteBrand(id: string): Promise<string> {
-  const res = await fetch(`/api/v1/brands/${id}`, {
+  const res = await apiFetch(`/api/v1/brands/${id}`, {
     method: "DELETE",
   });
 
