@@ -28,11 +28,23 @@ import Login from "./components/auth/Login";
 import UserManagement from "./components/auth/UserManagement";
 
 export default function App() {
+  const queryClient = useQueryClient();
   const authQuery = useQuery({
     queryKey: ["auth", "current-user"],
     queryFn: fetchCurrentUser,
     retry: false,
   });
+
+  useEffect(() => {
+    if (authQuery.data !== null) return;
+
+    const protectedQueries = {
+      predicate: (query: { queryKey: readonly unknown[] }) => query.queryKey[0] !== "auth",
+    };
+    void queryClient.cancelQueries(protectedQueries).then(() => {
+      queryClient.removeQueries(protectedQueries);
+    });
+  }, [authQuery.data, queryClient]);
 
   if (authQuery.isLoading) {
     return <main className="min-h-screen flex items-center justify-center text-sm text-slate-500">Checking session...</main>;
@@ -54,13 +66,11 @@ function ApplicationShell({ user }: { user: AuthUser }) {
   const logoutMutation = useMutation({
     mutationFn: logout,
     onSuccess: () => {
-      queryClient.clear();
       queryClient.setQueryData(["auth", "current-user"], null);
     },
   });
   useEffect(() => {
     const expireSession = () => {
-      queryClient.clear();
       queryClient.setQueryData(["auth", "current-user"], null);
     };
     window.addEventListener("auth:expired", expireSession);
@@ -156,6 +166,14 @@ function ApplicationShell({ user }: { user: AuthUser }) {
           })}
         </div>
       </nav>
+
+      {logoutMutation.isError && (
+        <p role="alert" className="mx-auto mt-4 w-full max-w-7xl px-4 text-sm text-rose-700 sm:px-6 lg:px-8">
+          {logoutMutation.error instanceof Error
+            ? logoutMutation.error.message
+            : "Unable to sign out. Please try again."}
+        </p>
+      )}
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
