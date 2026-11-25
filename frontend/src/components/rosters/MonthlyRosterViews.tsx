@@ -98,7 +98,7 @@ function EmployeeGrid({
             <th className="sticky left-0 z-20 min-w-56 border-b border-r border-slate-200 bg-slate-50 px-4 py-3 text-left">Employee / Pod</th>
             {dates.map((date) => {
               const label = dateLabel(date);
-              return <th key={date} className="min-w-32 border-b border-slate-200 px-2 py-2 text-center">
+              return <th key={date} className="min-w-32 border-b border-slate-200 px-2 py-2.5 text-center">
                 <span className="block font-semibold text-slate-800">{label.day}</span>
                 <span className="text-[11px] text-slate-500">{label.weekday}</span>
               </th>;
@@ -115,7 +115,7 @@ function EmployeeGrid({
               {dates.map((date) => {
                 const shift = shiftByEmployeeDate.get(`${employee.id}:${date}`);
                 return (
-                  <td key={date} className="border-l border-slate-100 px-2 py-2 align-top">
+                  <td key={date} className="border-l border-slate-100 px-2 py-2.5 align-top">
                     {shift ? (
                       <div className="space-y-1">
                         <StatusBadge shift={shift} />
@@ -171,7 +171,7 @@ function ProcessGrid({
             <th className="sticky left-0 z-20 min-w-64 border-b border-r border-slate-200 bg-slate-50 px-4 py-3 text-left">Process / Brand</th>
             {dates.map((date) => {
               const label = dateLabel(date);
-              return <th key={date} className="min-w-44 border-b border-slate-200 px-3 py-2 text-center">
+              return <th key={date} className="min-w-44 border-b border-slate-200 px-3 py-2.5 text-center">
                 <span className="block font-semibold text-slate-800">{label.day}</span>
                 <span className="text-[11px] text-slate-500">{label.weekday}</span>
               </th>;
@@ -191,7 +191,7 @@ function ProcessGrid({
                   shift.shiftDate === date && shift.processId === process.id && shift.status === "WORKING"
                 );
                 return (
-                  <td key={date} className="border-l border-slate-100 px-3 py-2">
+                  <td key={date} className="border-l border-slate-100 px-3 py-2.5">
                     {staffing ? (
                       <div className="space-y-1.5">
                         <p className={`text-xs font-semibold ${staffing.unfilledPositions ? "text-rose-700" : "text-slate-600"}`}>
@@ -359,8 +359,8 @@ export default function MonthlyRosterViews() {
     <div className="space-y-5">
       <header className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <div className="flex flex-col gap-1">
-          <h2 className="text-xl font-bold text-slate-900">Monthly Roster Views</h2>
-          <p className="text-sm text-slate-500">Explore the same saved roster by company, pod, brand, process, or employee. These views do not change roster data.</p>
+          <h2 className="app-page-title">Monthly Roster Views</h2>
+          <p className="text-sm leading-6 text-slate-500">Explore the same saved roster by company, pod, brand, process, or employee. These views do not change roster data.</p>
         </div>
         <div className="mt-5 flex flex-wrap gap-2" role="tablist" aria-label="Roster view">
           {viewOptions.map((option) => (
@@ -369,7 +369,7 @@ export default function MonthlyRosterViews() {
               role="tab"
               aria-selected={mode === option.id}
               onClick={() => setMode(option.id)}
-              className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${mode === option.id ? "bg-indigo-600 text-white" : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
+              className={`min-h-10 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${mode === option.id ? "bg-indigo-600 text-white" : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
             >
               {option.label}
             </button>
@@ -377,18 +377,18 @@ export default function MonthlyRosterViews() {
         </div>
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
           <label className="block">
-            <span className="mb-1 block text-xs font-semibold text-slate-700">Month</span>
+            <span className="mb-1 block text-sm font-medium text-slate-700">Month</span>
             <select value={month} onChange={(event) => setMonth(event.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm sm:w-44">
               {Array.from({ length: 12 }, (_, index) => <option key={index + 1} value={index + 1}>{new Date(2024, index, 1).toLocaleString(undefined, { month: "long" })}</option>)}
             </select>
           </label>
           <label className="block">
-            <span className="mb-1 block text-xs font-semibold text-slate-700">Year</span>
+            <span className="mb-1 block text-sm font-medium text-slate-700">Year</span>
             <input type="number" min={1900} max={9999} value={year} onChange={(event) => setYear(event.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm sm:w-28" />
           </label>
           {mode !== "company" && (
             <label className="block min-w-56 flex-1">
-              <span className="mb-1 block text-xs font-semibold text-slate-700">{mode === "pod" ? "Pod" : mode === "brand" ? "Brand" : mode === "process" ? "Process" : "Employee"}</span>
+              <span className="mb-1 block text-sm font-medium text-slate-700">{mode === "pod" ? "Pod" : mode === "brand" ? "Brand" : mode === "process" ? "Process" : "Employee"}</span>
               <select
                 value={filterId}
                 onChange={(event) => {
@@ -465,8 +465,8 @@ export default function MonthlyRosterViews() {
 
           <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
             <div className="flex flex-col gap-1 border-b border-slate-200 p-4 sm:p-5">
-              <h3 className="font-bold text-slate-900">{viewOptions.find((option) => option.id === mode)?.label} schedule</h3>
-              <p className="text-xs text-slate-500">
+              <h3 className="app-section-title">{viewOptions.find((option) => option.id === mode)?.label} schedule</h3>
+              <p className="text-sm leading-5 text-slate-500">
                 {mode === "company" ? "Saved roster entries for the company." : mode === "pod" ? "All roster entries for employees currently associated with this pod." : mode === "brand" ? "Daily staffing and assigned employees across this brand's processes." : mode === "process" ? "Saved assignments compared with the current staffing rules." : "Complete set of saved roster entries for the selected employee."}
               </p>
             </div>

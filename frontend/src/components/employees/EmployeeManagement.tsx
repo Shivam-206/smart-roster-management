@@ -151,19 +151,19 @@ export default function EmployeeManagement() {
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center space-x-2">
-            <h2 className="text-xl font-bold text-slate-900">Staff & Employee Directory</h2>
+            <h2 className="app-page-title">Staff & Employee Directory</h2>
             <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
               {employees.length} Members
             </span>
           </div>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="mt-1 text-sm leading-6 text-slate-500">
             Manage operational associates, pod leads, working contracts, and weekly off patterns.
           </p>
         </div>
 
         <button
           onClick={handleOpenAdd}
-          className="inline-flex items-center space-x-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold shadow-sm transition-colors self-start md:self-auto"
+          className="inline-flex min-h-10 items-center space-x-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold shadow-sm transition-colors self-start md:self-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
         >
           <Plus className="w-4 h-4" />
           <span>Add Employee</span>
@@ -252,7 +252,7 @@ export default function EmployeeManagement() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm border-collapse">
               <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 text-xs font-semibold uppercase tracking-wider">
+                <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 text-[13px] font-semibold uppercase tracking-wider">
                   <th className="px-6 py-3">Employee</th>
                   <th className="px-6 py-3">Pod Assignment</th>
                   <th className="px-6 py-3">Role & Status</th>

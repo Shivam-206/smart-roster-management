@@ -162,19 +162,19 @@ export default function PodManagement() {
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center space-x-2">
-            <h2 className="text-xl font-bold text-slate-900">Operational Pods</h2>
+            <h2 className="app-page-title">Operational Pods</h2>
             <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
               {pods.length} Active Pods
             </span>
           </div>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="mt-1 text-sm leading-6 text-slate-500">
             Manage operational teams, pod lead assignments, member allocations, and client brand coverage.
           </p>
         </div>
 
         <button
           onClick={handleOpenAdd}
-          className="inline-flex items-center space-x-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold shadow-sm transition-colors self-start md:self-auto"
+          className="inline-flex min-h-10 items-center space-x-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold shadow-sm transition-colors self-start md:self-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
         >
           <Plus className="w-4 h-4" />
           <span>Create New Pod</span>
@@ -275,7 +275,7 @@ export default function PodManagement() {
                   </div>
                 </div>
 
-                <p className="text-xs text-slate-600 mt-2.5 line-clamp-2 leading-relaxed">
+                <p className="mt-2.5 line-clamp-2 text-sm leading-relaxed text-slate-600">
                   {pod.description || "No specific operational description provided."}
                 </p>
 

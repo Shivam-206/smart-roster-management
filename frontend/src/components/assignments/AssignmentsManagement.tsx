@@ -313,21 +313,21 @@ export default function AssignmentsManagement() {
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-xl font-bold text-slate-900">Employee–Process Assignments</h2>
+            <h2 className="app-page-title">Employee–Process Assignments</h2>
             <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
               {assignments.length} assignments
             </span>
           </div>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="mt-1 text-sm leading-6 text-slate-500">
             Manage process qualifications and backup designations. A backup assignment does not schedule an employee to work.
           </p>
         </div>
-        <button onClick={openCreate} className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold">
+        <button onClick={openCreate} className="inline-flex min-h-10 items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2">
           <Plus className="w-4 h-4" /> Assign Employee
         </button>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 space-y-3">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-3">
         <div className="relative w-full">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
@@ -386,7 +386,7 @@ export default function AssignmentsManagement() {
               <thead className="bg-slate-50">
                 <tr>
                   {["Employee", "Pod", "Brand", "Process", "Assignment Tier", "Actions"].map((heading) => (
-                    <th key={heading} className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">{heading}</th>
+                    <th key={heading} className="px-5 py-3.5 text-left text-[13px] font-semibold uppercase tracking-wide text-slate-500">{heading}</th>
                   ))}
                 </tr>
               </thead>

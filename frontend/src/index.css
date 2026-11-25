@@ -5,3 +5,76 @@
 :root {
   color-scheme: light;
 }
+
+@layer base {
+  body {
+    @apply text-[15px] leading-6 text-slate-700;
+  }
+}
+
+@layer components {
+  .app-page-title {
+    @apply text-2xl font-bold tracking-tight text-slate-900;
+  }
+
+  .app-section-title {
+    @apply text-base font-semibold leading-6 text-slate-900;
+  }
+
+  @media (min-width: 640px) {
+    .app-page-title {
+      @apply text-[26px] leading-8;
+    }
+  }
+}
+
+/* Hide scrollbar while preserving scroll behavior */
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* Thin scrollbar for data tables */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #e2e8f0 transparent;
+}
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: #e2e8f0;
+  border-radius: 3px;
+}
+
+#root input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="submit"]):not([type="button"]),
+#root select,
+#root textarea {
+  min-height: 2.75rem;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+#root input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="submit"]):not([type="button"]):focus,
+#root select:focus,
+#root textarea:focus {
+  border-color: #6366f1;
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(99 102 241 / 16%);
+}
+
+#root form label {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+#root form button[type="submit"] {
+  min-height: 2.5rem;
+}
